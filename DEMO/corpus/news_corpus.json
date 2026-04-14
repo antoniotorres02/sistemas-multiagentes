@@ -1,0 +1,68 @@
+[
+  {
+    "item_id": "ai-reg-1",
+    "title": "La Comisión Europea concreta nuevas obligaciones de transparencia para sistemas de IA",
+    "summary": "Bruselas detalla cómo deberán documentarse los modelos y qué trazas mínimas exigirá a proveedores de alto riesgo.",
+    "body": "La Comisión Europea ha detallado nuevas obligaciones de transparencia para sistemas de inteligencia artificial. El foco está en trazabilidad, documentación técnica y responsabilidad de proveedores que operan en entornos de alto riesgo dentro del mercado europeo.",
+    "source_name": "Europa Policy Daily",
+    "url": "https://demo.local/eu-ai-transparency",
+    "published_at": "2026-03-24T09:00:00+00:00",
+    "tags": ["ai", "regulation", "europe", "policy"],
+    "semantic_topic": "ai regulation"
+  },
+  {
+    "item_id": "ai-reg-2",
+    "title": "Empresas europeas ajustan sus modelos ante la entrada en vigor parcial del AI Act",
+    "summary": "Varias compañías reordenan procesos internos para cumplir con reglas de documentación y evaluación de riesgo.",
+    "body": "Empresas tecnológicas europeas están adaptando sus flujos internos ante la entrada en vigor parcial del AI Act. Los equipos legales y de producto trabajan en documentación, gestión de riesgos y trazabilidad de datos usados en entrenamiento.",
+    "source_name": "Tech Governance Europe",
+    "url": "https://demo.local/ai-act-compliance",
+    "published_at": "2026-03-24T12:30:00+00:00",
+    "tags": ["ai", "compliance", "europe", "regulation"],
+    "semantic_topic": "ai regulation"
+  },
+  {
+    "item_id": "ai-health-1",
+    "title": "Hospitales públicos prueban asistentes clínicos basados en IA para priorizar diagnósticos",
+    "summary": "El piloto se centra en apoyo documental y clasificación preliminar de casos, sin sustituir decisión médica.",
+    "body": "Varios hospitales públicos están probando asistentes clínicos basados en inteligencia artificial. El objetivo declarado es priorizar diagnósticos, resumir historial y apoyar tareas documentales sin desplazar la decisión médica final.",
+    "source_name": "Health Systems Review",
+    "url": "https://demo.local/ai-hospitals-pilot",
+    "published_at": "2026-03-23T15:00:00+00:00",
+    "tags": ["ai", "health", "hospitals"],
+    "semantic_topic": "ai in health"
+  },
+  {
+    "item_id": "ai-health-2",
+    "title": "Sanidad aclara que los sistemas de IA clínica seguirán bajo supervisión humana estricta",
+    "summary": "El ministerio subraya que los pilotos tecnológicos deben mantener trazabilidad y revisión humana final.",
+    "body": "El Ministerio de Sanidad ha aclarado que los sistemas de IA clínica deberán mantenerse bajo supervisión humana estricta. La nota insiste en trazabilidad, evaluación previa y revisión profesional antes de cualquier uso sensible.",
+    "source_name": "Public Health Brief",
+    "url": "https://demo.local/ai-clinical-supervision",
+    "published_at": "2026-03-24T08:15:00+00:00",
+    "tags": ["ai", "health", "policy"],
+    "semantic_topic": "ai in health"
+  },
+  {
+    "item_id": "energy-1",
+    "title": "España amplía un programa piloto de almacenamiento para reforzar la red eléctrica",
+    "summary": "El nuevo tramo incorpora baterías y control digital para mejorar flexibilidad en horas punta.",
+    "body": "España ha ampliado un programa piloto de almacenamiento energético con baterías y control digital. El objetivo es reforzar la flexibilidad del sistema en picos de demanda y reducir vulnerabilidades operativas.",
+    "source_name": "Energy Transition Watch",
+    "url": "https://demo.local/spain-grid-storage",
+    "published_at": "2026-03-22T11:10:00+00:00",
+    "tags": ["energy", "spain", "grid", "storage"],
+    "semantic_topic": "energy transition"
+  },
+  {
+    "item_id": "energy-2",
+    "title": "Operadores europeos piden más inversión en red y almacenamiento tras varios episodios de tensión",
+    "summary": "Los gestores señalan que la transición energética exige más margen operativo y mejor coordinación.",
+    "body": "Operadores europeos de red piden acelerar la inversión en almacenamiento y refuerzo de infraestructuras. Argumentan que la transición energética y la electrificación aumentan la necesidad de coordinación y capacidad de respuesta.",
+    "source_name": "Grid Europe Monitor",
+    "url": "https://demo.local/eu-grid-investment",
+    "published_at": "2026-03-22T16:45:00+00:00",
+    "tags": ["energy", "europe", "grid"],
+    "semantic_topic": "energy transition"
+  }
+]

@@ -1,0 +1,16 @@
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+__pycache__/
+*.pyc
+*.egg-info/
+DEMO/data/
+DEMO/runs/
+*.log
+*.aux
+*.fdb_latexmk
+*.fls
+*.out
+*.toc
+*.pdf
