@@ -10,7 +10,7 @@ from uuid import uuid4
 
 from langgraph.types import StateSnapshot
 
-from DEMO.models import DemoHandoff, DemoRunArtifactPaths, DemoRuntimePaths, DemoTraceEvent
+from news_system_demo.models import DemoHandoff, DemoRunArtifactPaths, DemoRuntimePaths, DemoTraceEvent
 
 
 def build_runtime_paths(root_dir: Path) -> DemoRuntimePaths:

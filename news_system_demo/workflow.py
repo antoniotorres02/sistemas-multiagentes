@@ -1,4 +1,4 @@
-"""Didactic LangGraph workflow used by the DEMO CLI."""
+"""Didactic LangGraph workflow used by the demo CLI."""
 
 from __future__ import annotations
 
@@ -11,8 +11,8 @@ from typing import Any, Protocol, cast
 from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.graph import END, START, StateGraph
 
-from DEMO.llm import DemoOpenRouterClient
-from DEMO.models import (
+from news_system_demo.llm import DemoOpenRouterClient
+from news_system_demo.models import (
     DemoCorpusItem,
     DemoDraftPayload,
     DemoHandoff,
@@ -22,7 +22,7 @@ from DEMO.models import (
     DemoVerificationPayload,
     DemoWorkspace,
 )
-from DEMO.runtime import DemoTracer
+from news_system_demo.runtime import DemoTracer
 
 
 class DemoLlmClientProtocol(Protocol):
@@ -220,7 +220,7 @@ def render_markdown_report(state: DemoState) -> str:
     handoffs = state.get("handoffs", [])
     review_feedback = state.get("review_feedback", {})
     lines = [
-        f"# DEMO LangGraph: {topic}",
+        f"# news_system_demo LangGraph: {topic}",
         "",
         f"## {draft['headline']}",
         "",

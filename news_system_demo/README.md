@@ -1,4 +1,4 @@
-# DEMO LangGraph
+# news_system_demo
 
 Microapp didáctica por CLI para explicar LangGraph como organización multiagente observable, no como producto de noticias completo.
 
@@ -20,17 +20,17 @@ Grafo principal:
 ## Ejecución
 ```bash
 source .venv/bin/activate
-python -m DEMO run --topic "ai regulation europe"
-DEMO_OPENROUTER_MODEL=minimax/minimax-m2.7 python -m DEMO run --topic "ai regulation europe"
+python -m news_system_demo run --topic "ai regulation europe"
+DEMO_OPENROUTER_MODEL=minimax/minimax-m2.7 python -m news_system_demo run --topic "ai regulation europe"
 ```
 
 ## Comandos
 ```bash
-python -m DEMO run --topic "ai regulation europe"
-python -m DEMO show-history --thread-id <thread_id>
-python -m DEMO show-state --thread-id <thread_id>
-python -m DEMO show-trace --thread-id <thread_id>
-python -m DEMO replay --thread-id <thread_id> --checkpoint-index 0
+python -m news_system_demo run --topic "ai regulation europe"
+python -m news_system_demo show-history --thread-id <thread_id>
+python -m news_system_demo show-state --thread-id <thread_id>
+python -m news_system_demo show-trace --thread-id <thread_id>
+python -m news_system_demo replay --thread-id <thread_id> --checkpoint-index 0
 ```
 
 ## Qué enseña cada comando
@@ -41,14 +41,14 @@ python -m DEMO replay --thread-id <thread_id> --checkpoint-index 0
 - `replay`: relee la historia persistida desde un checkpoint para estudiar la evolución del estado.
 
 ## Artefactos
-Cada run crea `DEMO/runs/<thread_id>/` con:
+Cada run crea `news_system_demo/runs/<thread_id>/` con:
 - `events.jsonl`
 - `graph.mmd`
 - `report.md`
 - `state_history.json`
 
 Los checkpoints de LangGraph se guardan en:
-- `DEMO/data/checkpoints.sqlite3`
+- `news_system_demo/data/checkpoints.sqlite3`
 
 ## Perspectiva SMA
 - `research` y `curate` hacen trabajo determinista sobre el entorno local.

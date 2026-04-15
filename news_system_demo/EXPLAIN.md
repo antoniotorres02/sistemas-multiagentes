@@ -1,4 +1,4 @@
-# Cómo leer la DEMO
+# Cómo leer `news_system_demo`
 
 ## 1. `load_workspace`
 - Introduce en el estado la configuración mínima del flujo.

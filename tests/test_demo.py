@@ -9,20 +9,20 @@ from typing import Any
 from langgraph.checkpoint.sqlite import SqliteSaver
 from typer.testing import CliRunner
 
-from DEMO.cli import app
-from DEMO.models import (
+from news_system_demo.cli import app
+from news_system_demo.models import (
     DemoDraftPayload,
     DemoReviewPayload,
     DemoVerificationPayload,
     DemoRuntimePaths,
 )
-from DEMO.runtime import (
+from news_system_demo.runtime import (
     DemoTracer,
     create_run_artifacts,
     write_graph_mermaid,
     write_state_history,
 )
-from DEMO.workflow import build_demo_graph
+from news_system_demo.workflow import build_demo_graph
 
 
 class FakeDemoLlmClient:
@@ -97,7 +97,7 @@ class FakeDemoLlmClient:
                     "Los checkpoints y handoffs permiten inspección posterior.",
                 ],
                 "closing_note": (
-                    "La DEMO prioriza claridad arquitectónica sobre complejidad "
+                    "La demo prioriza claridad arquitectónica sobre complejidad "
                     "de dominio."
                 ),
             }
@@ -107,14 +107,14 @@ class FakeDemoLlmClient:
 def test_demo_workflow_runs_and_persists_artifacts(tmp_path: Path) -> None:
     """Run the demo graph end to end with a fake LLM and persist artifacts."""
 
-    root_dir = tmp_path / "DEMO"
+    root_dir = tmp_path / "news_system_demo"
     corpus_dir = root_dir / "corpus"
     data_dir = root_dir / "data"
     runs_dir = root_dir / "runs"
     corpus_dir.mkdir(parents=True)
     data_dir.mkdir()
     runs_dir.mkdir()
-    source_corpus = Path(__file__).resolve().parents[1] / "DEMO" / "corpus" / "news_corpus.json"
+    source_corpus = Path(__file__).resolve().parents[1] / "news_system_demo" / "corpus" / "news_corpus.json"
     corpus_path = corpus_dir / "news_corpus.json"
     corpus_path.write_text(source_corpus.read_text(encoding="utf-8"), encoding="utf-8")
 
@@ -162,7 +162,7 @@ def test_demo_replay_cli_reads_persisted_state_history(tmp_path: Path, monkeypat
     """Replay a persisted demo history through the CLI."""
 
     runner = CliRunner()
-    demo_root = tmp_path / "DEMO"
+    demo_root = tmp_path / "news_system_demo"
     (demo_root / "runs" / "demo-thread").mkdir(parents=True)
     history_path = demo_root / "runs" / "demo-thread" / "state_history.json"
     history_path.write_text(
@@ -186,7 +186,7 @@ def test_demo_replay_cli_reads_persisted_state_history(tmp_path: Path, monkeypat
         ),
         encoding="utf-8",
     )
-    monkeypatch.setattr("DEMO.cli.ROOT_DIR", demo_root)
+    monkeypatch.setattr("news_system_demo.cli.ROOT_DIR", demo_root)
 
     result = runner.invoke(app, ["replay", "--thread-id", "demo-thread", "--checkpoint-index", "1"])
 
@@ -199,7 +199,7 @@ def test_demo_show_trace_cli_reads_persisted_trace(tmp_path: Path, monkeypatch: 
     """Show the persisted trace with edge and handoff events."""
 
     runner = CliRunner()
-    demo_root = tmp_path / "DEMO"
+    demo_root = tmp_path / "news_system_demo"
     (demo_root / "runs" / "demo-thread").mkdir(parents=True)
     events_path = demo_root / "runs" / "demo-thread" / "events.jsonl"
     events_path.write_text(
@@ -242,7 +242,7 @@ def test_demo_show_trace_cli_reads_persisted_trace(tmp_path: Path, monkeypatch: 
         ),
         encoding="utf-8",
     )
-    monkeypatch.setattr("DEMO.cli.ROOT_DIR", demo_root)
+    monkeypatch.setattr("news_system_demo.cli.ROOT_DIR", demo_root)
 
     result = runner.invoke(app, ["show-trace", "--thread-id", "demo-thread"])
 

@@ -19,17 +19,17 @@ dependencies = [
 ]
 
 [project.scripts]
-sma-demo = "DEMO.cli:main"
+sma-demo = "news_system_demo.cli:main"
 
 [tool.setuptools]
 include-package-data = true
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["DEMO*"]
+include = ["news_system_demo*"]
 
 [tool.setuptools.package-data]
-DEMO = ["corpus/*.json"]
+news_system_demo = ["corpus/*.json"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

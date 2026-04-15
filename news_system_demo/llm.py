@@ -68,7 +68,7 @@ class DemoOpenRouterClient:
         )
         self.timeout_seconds = timeout_seconds
         if not self.api_key:
-            raise ValueError("OPENROUTER_KEY is required for the DEMO workflow.")
+            raise ValueError("OPENROUTER_KEY is required for the news_system_demo workflow.")
 
     async def _post(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Send one chat completion request to OpenRouter."""
@@ -89,7 +89,7 @@ class DemoOpenRouterClient:
                     )
                     response.raise_for_status()
                     return cast(dict[str, Any], response.json())
-        raise RuntimeError("OpenRouter request exhausted retries in DEMO.")
+        raise RuntimeError("OpenRouter request exhausted retries in news_system_demo.")
 
     async def complete_json(
         self,

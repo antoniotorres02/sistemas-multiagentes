@@ -9,8 +9,8 @@ from typing import Any
 import typer
 from langgraph.checkpoint.sqlite import SqliteSaver
 
-from DEMO.models import DemoTraceEvent
-from DEMO.runtime import (
+from news_system_demo.models import DemoTraceEvent
+from news_system_demo.runtime import (
     build_runtime_paths,
     build_thread_id,
     create_run_artifacts,
@@ -18,7 +18,7 @@ from DEMO.runtime import (
     write_graph_mermaid,
     write_state_history,
 )
-from DEMO.workflow import build_default_llm_client, build_demo_graph
+from news_system_demo.workflow import build_default_llm_client, build_demo_graph
 
 app = typer.Typer(add_completion=False, no_args_is_help=True)
 ROOT_DIR = Path(__file__).resolve().parent
@@ -31,7 +31,7 @@ def _with_graph(topic: str, thread_id: str) -> tuple[Any, Any, Any]:
     ensure_runtime_directories(paths)
     artifacts = create_run_artifacts(paths, thread_id)
     write_graph_mermaid(artifacts)
-    from DEMO.runtime import DemoTracer
+    from news_system_demo.runtime import DemoTracer
 
     tracer = DemoTracer(artifacts)
     llm_client = build_default_llm_client(paths.env_path)
@@ -90,7 +90,7 @@ def _read_trace_events(thread_id: str) -> list[DemoTraceEvent]:
 
 @app.command("run")
 def run_demo(
-    topic: str = typer.Option(..., help="Tema didáctico a analizar en la DEMO."),
+    topic: str = typer.Option(..., help="Tema didáctico a analizar en la demo."),
     thread_id: str | None = typer.Option(None, help="Thread id fijo para demostrar persistencia."),
 ) -> None:
     """Run the didactic workflow and persist both artifacts and checkpoints."""
@@ -106,7 +106,7 @@ def run_demo(
         snapshots = list(graph.get_state_history(config))
         write_state_history(artifacts, snapshots)
         typer.echo("")
-        typer.echo("=== DEMO COMPLETADA ===")
+        typer.echo("=== news_system_demo COMPLETADA ===")
         typer.echo(f"thread_id: {effective_thread_id}")
         typer.echo(f"report_md: {artifacts.report_md}")
         typer.echo(f"events_jsonl: {artifacts.events_jsonl}")
@@ -144,7 +144,7 @@ def show_history(
     saver_context = SqliteSaver.from_conn_string(str(paths.checkpoint_db_path))
     saver = saver_context.__enter__()
     try:
-        from DEMO.runtime import DemoTracer
+        from news_system_demo.runtime import DemoTracer
 
         artifacts = create_run_artifacts(paths, thread_id)
         tracer = DemoTracer(artifacts, truncate_existing=False)
@@ -191,7 +191,7 @@ def show_state(
     saver_context = SqliteSaver.from_conn_string(str(paths.checkpoint_db_path))
     saver = saver_context.__enter__()
     try:
-        from DEMO.runtime import DemoTracer
+        from news_system_demo.runtime import DemoTracer
 
         artifacts = create_run_artifacts(paths, thread_id)
         tracer = DemoTracer(artifacts, truncate_existing=False)
