@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import os
-from typing import Any, TypeVar, cast
+from typing import Any, Protocol, TypeVar, cast
 
 import httpx
 from dotenv import load_dotenv
@@ -14,6 +14,20 @@ from tenacity import AsyncRetrying, stop_after_attempt, wait_fixed
 DEFAULT_CHAT_MODEL = "minimax/minimax-m2.7"
 OPENROUTER_CHAT_URL = "https://openrouter.ai/api/v1/chat/completions"
 ResponseModelT = TypeVar("ResponseModelT", bound=BaseModel)
+
+
+class DemoLlmClientProtocol(Protocol):
+    """Subset of LLM behavior used by the demo workflow."""
+
+    async def complete_json(
+        self,
+        *,
+        system_prompt: str,
+        user_prompt: str,
+        response_model: type[Any],
+        temperature: float = 0.2,
+    ) -> Any:
+        """Return a structured JSON completion."""
 
 
 def extract_text_content(content: Any) -> str:

@@ -5,8 +5,8 @@
 __pycache__/
 *.pyc
 *.egg-info/
-DEMO/data/
-DEMO/runs/
+news_system_demo/data/
+news_system_demo/runs/
 *.log
 *.aux
 *.fdb_latexmk
