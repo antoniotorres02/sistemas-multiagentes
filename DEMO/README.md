@@ -9,7 +9,7 @@ Grafo principal:
 ## Objetivo
 - Mostrar roles diferenciados con un estado compartido pequeño.
 - Hacer visibles nodos, aristas, handoffs, checkpoints y artefactos.
-- Mantener el montaje ligero: corpus local, sin scraping, sin frontend y sin dependencias del sistema web durante la demo.
+- Mantener el montaje ligero con corpus local y ejecución por CLI.
 
 ## Requisitos
 - Estar en la raíz del repositorio.
@@ -56,4 +56,4 @@ Los checkpoints de LangGraph se guardan en:
 - `review` fuerza una única vuelta didáctica de realimentación para que la arista condicional quede visible.
 - `handoffs` materializa qué entrega cada agente al siguiente.
 
-La demo está deliberadamente simplificada: no incluye frontend ni backend web y sirve para enseñar coordinación, memoria de trabajo y trazabilidad.
+La demo prioriza coordinación, memoria de trabajo y trazabilidad.

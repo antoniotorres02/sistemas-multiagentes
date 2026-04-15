@@ -12,12 +12,6 @@ La pieza principal es la CLI de `DEMO/`, pensada para mostrar una organización 
 - Una prueba mínima en `tests/test_demo.py`
 - Configuración de empaquetado y ejecución con `pyproject.toml`
 
-## Qué no incluye
-- Frontend
-- Backend web
-- Scraping en vivo
-- El sistema completo de `news_system`
-
 ## Requisitos
 - Python 3.12
 - `OPENROUTER_KEY` en un archivo `.env` en la raíz del repo
