@@ -11,7 +11,9 @@ __pycache__/
 *.pyc
 *.egg-info/
 news_system_demo/data/
-news_system_demo/runs/
+news_system_demo/runs/*
+!news_system_demo/runs/entrega-langgraph-sma-ai-regulation/
+!news_system_demo/runs/entrega-langgraph-sma-ai-regulation/report.md
 *.log
 *.aux
 *.fdb_latexmk
@@ -19,3 +21,4 @@ news_system_demo/runs/
 *.out
 *.toc
 *.pdf
+!news_system_demo/runs/entrega-langgraph-sma-ai-regulation/run.log
