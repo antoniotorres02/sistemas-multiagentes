@@ -13,9 +13,12 @@ uv sync
 Crea un `.env` con tu clave de OpenRouter:
 
 ```bash
-OPENROUTER_KEY=...
+OPENROUTER_API_KEY=...
 DEMO_OPENROUTER_MODEL=deepseek/deepseek-v4-flash
 ```
+
+`OPENROUTER_KEY` sigue aceptándose como alias legacy, pero la integración
+LangChain usa `OPENROUTER_API_KEY` como variable preferida.
 
 ## Uso
 
