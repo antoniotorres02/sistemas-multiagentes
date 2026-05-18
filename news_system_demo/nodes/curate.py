@@ -19,12 +19,19 @@ def curate_node(
         state.get("selected_items", []),
         limit=workspace.max_story_briefs,
     )
+    editorial_roles = ["pieza principal", "contexto", "contraste"]
+    for index, item in enumerate(selected_items):
+        item["editorial_role"] = editorial_roles[min(index, len(editorial_roles) - 1)]
     logger.step(
         "curate",
-        "Se reduce la evidencia a una selección corta para redactar una noticia legible.",
+        "Se elige una mezcla corta de piezas para redactar una noticia legible.",
         [
             f"Items mantenidos: {len(selected_items)}",
-            *[f"{item['semantic_topic']}: {item['title']}" for item in selected_items],
+            *[
+                f"{item['editorial_role']}: {item['source_name']} | {item['title']} "
+                f"[{item.get('story_angle', 'contexto')}]"
+                for item in selected_items
+            ],
         ],
     )
     return {"selected_items": selected_items}

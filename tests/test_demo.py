@@ -12,6 +12,7 @@ from typer.testing import CliRunner
 from news_system_demo.cli import app
 from news_system_demo.llm import OpenRouterClient
 from news_system_demo.models import ArticlePayload, EvidencePayload, ReviewPayload, RuntimePaths
+from news_system_demo.nodes.shared import curate_items, load_corpus, score_item_for_topic
 from news_system_demo.runtime import RunLogger, create_run_artifacts
 from news_system_demo.workflow import build_demo_graph
 
@@ -169,6 +170,64 @@ def test_workflow_writes_clean_report_and_plain_log(tmp_path: Path) -> None:
     assert "## 7. render" in log_text
     assert not Path(artifacts.run_dir, "events.jsonl").exists()
     assert not Path(artifacts.run_dir, "state_history.json").exists()
+
+
+def test_research_ranking_prefers_relevant_editorial_candidates(tmp_path: Path) -> None:
+    """Score the richer corpus by topic instead of taking the first boolean match."""
+
+    _, corpus_path, _ = _build_demo_root(tmp_path)
+    corpus = load_corpus(corpus_path)
+    ranked = sorted(
+        (
+            (score, item.item_id, reasons)
+            for item in corpus
+            for score, reasons in [score_item_for_topic("ai regulation europe", item)]
+            if score > 0
+        ),
+        reverse=True,
+    )
+
+    assert ranked[0][1] == "a"
+    assert "tema directo: ai regulation" in ranked[0][2]
+
+
+def test_curate_keeps_source_diversity_before_filling_limit() -> None:
+    """Avoid keeping near-duplicates when a different source is available."""
+
+    items = [
+        {"title": "a", "semantic_topic": "ai regulation", "source_name": "Same Source", "match_score": 80},
+        {"title": "b", "semantic_topic": "ai regulation", "source_name": "Same Source", "match_score": 75},
+        {"title": "c", "semantic_topic": "ai regulation", "source_name": "Different Source", "match_score": 70},
+    ]
+
+    selected = curate_items(items, limit=2)
+
+    assert [item["title"] for item in selected] == ["a", "c"]
+
+
+def test_unrelated_topic_keeps_no_evidence_fallback(tmp_path: Path) -> None:
+    """Do not invent a story when the topic has no corpus support."""
+
+    root_dir, corpus_path, runs_dir = _build_demo_root(tmp_path)
+    runtime_paths = RuntimePaths(
+        root_dir=root_dir,
+        corpus_path=corpus_path,
+        runs_dir=runs_dir,
+        env_path=tmp_path / ".env",
+    )
+    artifacts = create_run_artifacts(runtime_paths, "demo-thread")
+    logger = RunLogger(artifacts, topic="volcanic tourism")
+    graph = build_demo_graph(
+        corpus_path=corpus_path,
+        artifacts=artifacts,
+        logger=logger,
+        llm_client=FakeLlmClient(),
+    )
+
+    final_state = asyncio.run(graph.ainvoke({"topic": "volcanic tourism", "thread_id": "demo-thread"}))
+
+    assert final_state["selected_items"] == []
+    assert "No hay evidencia suficiente" in Path(artifacts.report_md).read_text(encoding="utf-8")
 
 
 def test_review_limit_does_not_fake_approval(tmp_path: Path) -> None:

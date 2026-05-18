@@ -38,6 +38,11 @@ class CorpusItem(BaseModel):
     published_at: datetime
     tags: list[str] = Field(default_factory=list)
     semantic_topic: str
+    source_kind: str = "news"
+    region: str = "global"
+    importance: int = 3
+    entities: list[str] = Field(default_factory=list)
+    story_angle: str = ""
 
 
 class Workspace(BaseModel):
