@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from news_system_demo.models import State
+from news_system_demo.models import State, StateUpdate
 from news_system_demo.runtime import RunLogger
 
 
@@ -10,7 +10,7 @@ def load_workspace_node(
     state: State,
     *,
     logger: RunLogger,
-) -> State:
+) -> StateUpdate:
     """Initialize the small shared state used by the graph."""
 
     logger.step(

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
-from typing import Any, TypedDict
+from typing import Any, NotRequired, Required, TypedDict
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -111,11 +111,23 @@ class RunArtifactPaths(BaseModel):
     run_log: str
 
 
-class State(TypedDict, total=False):
+class State(TypedDict):
     """Shared state passed between LangGraph nodes in the demo."""
 
-    topic: str
-    thread_id: str
+    topic: Required[str]
+    thread_id: Required[str]
+    selected_items: NotRequired[list[dict[str, Any]]]
+    evidence_note: NotRequired[str]
+    article_text: NotRequired[str]
+    review_note: NotRequired[str]
+    revision_count: NotRequired[int]
+    needs_revision: NotRequired[bool]
+    report_path: NotRequired[str]
+
+
+class StateUpdate(TypedDict, total=False):
+    """Partial update returned by one LangGraph node."""
+
     selected_items: list[dict[str, Any]]
     evidence_note: str
     article_text: str

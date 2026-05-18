@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from news_system_demo.models import CorpusItem, State
+from news_system_demo.models import CorpusItem, State, StateUpdate
 from news_system_demo.nodes.shared import (
     MIN_MATCH_SCORE,
     load_workspace,
@@ -19,7 +19,7 @@ def research_node(
     *,
     corpus: Sequence[CorpusItem],
     logger: RunLogger,
-) -> State:
+) -> StateUpdate:
     """Rank local corpus items that match the user topic."""
 
     workspace = load_workspace()

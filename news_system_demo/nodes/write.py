@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from news_system_demo.llm import LlmClientProtocol
-from news_system_demo.models import ArticlePayload, State
+from news_system_demo.models import ArticlePayload, State, StateUpdate
 from news_system_demo.nodes.shared import build_article_prompt, build_no_evidence_article
 from news_system_demo.runtime import RunLogger
 
@@ -13,7 +13,7 @@ async def write_node(
     *,
     llm_client: LlmClientProtocol,
     logger: RunLogger,
-) -> State:
+) -> StateUpdate:
     """Draft a clean Markdown article from the selected evidence."""
 
     selected_items = state.get("selected_items", [])

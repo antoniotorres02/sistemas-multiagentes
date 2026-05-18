@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from news_system_demo.models import State
+from news_system_demo.models import State, StateUpdate
 from news_system_demo.nodes.shared import curate_items, load_workspace
 from news_system_demo.runtime import RunLogger
 
@@ -11,7 +11,7 @@ def curate_node(
     state: State,
     *,
     logger: RunLogger,
-) -> State:
+) -> StateUpdate:
     """Keep a compact evidence selection before verification."""
 
     workspace = load_workspace()

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from news_system_demo.llm import LlmClientProtocol
-from news_system_demo.models import EvidencePayload, State
+from news_system_demo.models import EvidencePayload, State, StateUpdate
 from news_system_demo.nodes.shared import build_evidence_prompt
 from news_system_demo.runtime import RunLogger
 
@@ -13,7 +13,7 @@ async def verify_node(
     *,
     llm_client: LlmClientProtocol,
     logger: RunLogger,
-) -> State:
+) -> StateUpdate:
     """Produce one short plain-language evidence note."""
 
     selected_items = state.get("selected_items", [])

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from news_system_demo.models import RunArtifactPaths, State
+from news_system_demo.models import RunArtifactPaths, State, StateUpdate
 from news_system_demo.nodes.shared import render_markdown_report
 from news_system_demo.runtime import RunLogger
 
@@ -14,7 +14,7 @@ def render_node(
     *,
     artifacts: RunArtifactPaths,
     logger: RunLogger,
-) -> State:
+) -> StateUpdate:
     """Render the final Markdown report."""
 
     report_md = render_markdown_report(state)

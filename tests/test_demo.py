@@ -326,7 +326,7 @@ def test_openrouter_client_uses_langchain_structured_output(monkeypatch: Any) ->
     assert response == EvidencePayload(evidence_note="La evidencia es suficiente.")
     assert len(FakeChatOpenRouter.instances) == 1
     fake_model = FakeChatOpenRouter.instances[0]
-    assert fake_model.kwargs["api_key"] == "test-key"
+    assert fake_model.kwargs["api_key"].get_secret_value() == "test-key"
     assert fake_model.kwargs["model"] == "test-model"
     assert fake_model.kwargs["temperature"] == 0.2
     assert fake_model.kwargs["timeout"] == 60_000

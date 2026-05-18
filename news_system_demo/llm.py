@@ -12,7 +12,7 @@ from typing import Any, Protocol, TypeVar
 
 from dotenv import load_dotenv
 from langchain_openrouter import ChatOpenRouter
-from pydantic import BaseModel
+from pydantic import BaseModel, SecretStr
 
 DEFAULT_CHAT_MODEL = "deepseek/deepseek-v4-flash"
 ResponseModelT = TypeVar("ResponseModelT", bound=BaseModel)
@@ -49,7 +49,7 @@ class OpenRouterClient:
         # no dependa de variables exportadas globalmente.
         if env_path is not None:
             load_dotenv(env_path)
-        self.api_key = (
+        api_key_value = (
             api_key
             or os.getenv("OPENROUTER_API_KEY")
             or os.getenv("OPENROUTER_KEY")
@@ -61,11 +61,12 @@ class OpenRouterClient:
             or DEFAULT_CHAT_MODEL
         )
         self.timeout_seconds = timeout_seconds
-        if not self.api_key:
+        if not api_key_value:
             raise ValueError(
                 "OPENROUTER_API_KEY is required for the news_system_demo workflow "
                 "(OPENROUTER_KEY is still accepted for compatibility)."
             )
+        self.api_key = api_key_value
         self._models: dict[float, ChatOpenRouter] = {}
 
     def _build_model(self, *, temperature: float) -> ChatOpenRouter:
@@ -73,7 +74,7 @@ class OpenRouterClient:
 
         return ChatOpenRouter(
             model=self.model,
-            api_key=self.api_key,
+            api_key=SecretStr(self.api_key),
             temperature=temperature,
             timeout=int(self.timeout_seconds * 1000),
             max_retries=2,

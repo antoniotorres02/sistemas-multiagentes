@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from news_system_demo.llm import LlmClientProtocol
-from news_system_demo.models import ReviewPayload, State
+from news_system_demo.models import ReviewPayload, State, StateUpdate
 from news_system_demo.nodes.shared import build_review_prompt, load_workspace
 from news_system_demo.runtime import RunLogger
 
@@ -13,7 +13,7 @@ async def review_node(
     *,
     llm_client: LlmClientProtocol,
     logger: RunLogger,
-) -> State:
+) -> StateUpdate:
     """Review the article and decide whether to rewrite it once."""
 
     workspace = load_workspace()
