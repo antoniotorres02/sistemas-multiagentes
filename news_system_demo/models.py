@@ -54,7 +54,12 @@ class Workspace(BaseModel):
 class EvidencePayload(BaseModel):
     """Short evidence note produced by the verification step."""
 
-    evidence_note: str
+    evidence_note: str = Field(
+        description=(
+            "Short editorial note explaining what the evidence supports and what should "
+            "not be overstated."
+        )
+    )
 
     @field_validator("evidence_note", mode="before")
     @classmethod
@@ -67,7 +72,9 @@ class EvidencePayload(BaseModel):
 class ArticlePayload(BaseModel):
     """Final article draft produced by the writer step."""
 
-    article_text: str
+    article_text: str = Field(
+        description="Clean Markdown article with headline, lead, body, and sources."
+    )
 
     @field_validator("article_text", mode="before")
     @classmethod
@@ -80,8 +87,8 @@ class ArticlePayload(BaseModel):
 class ReviewPayload(BaseModel):
     """Small review response produced by the reviewer step."""
 
-    approved: bool
-    note: str
+    approved: bool = Field(description="Whether the article is ready to publish.")
+    note: str = Field(description="Concise editorial review note.")
 
     @field_validator("note", mode="before")
     @classmethod

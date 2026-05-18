@@ -9,11 +9,10 @@ description = "Demo multiagente observable con LangGraph."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-  "httpx>=0.28.1",
   "langgraph>=1.0.0",
+  "langchain-openrouter>=0.2.1",
   "pydantic>=2.11.2",
   "python-dotenv>=1.1.0",
-  "tenacity>=9.0.0",
   "typer>=0.15.2",
 ]
 
