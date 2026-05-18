@@ -2,75 +2,50 @@
 
 from __future__ import annotations
 
-import asyncio
-
-from news_system_demo.llm import DemoLlmClientProtocol
-from news_system_demo.models import DemoDraftPayload, DemoHandoff, DemoState
-from news_system_demo.nodes.shared import append_handoff, build_no_evidence_draft, build_write_prompt
-from news_system_demo.runtime import DemoTracer
+from news_system_demo.llm import LlmClientProtocol
+from news_system_demo.models import ArticlePayload, State
+from news_system_demo.nodes.shared import build_article_prompt, build_no_evidence_article
+from news_system_demo.runtime import RunLogger
 
 
-def write_node(
-    state: DemoState,
+async def write_node(
+    state: State,
     *,
-    llm_client: DemoLlmClientProtocol,
-    tracer: DemoTracer,
-) -> DemoState:
-    """Draft a concise didactic report from verified stories."""
+    llm_client: LlmClientProtocol,
+    logger: RunLogger,
+) -> State:
+    """Draft a clean Markdown article from the selected evidence."""
 
-    story_briefs = state.get("story_briefs", [])
-    verifications = state.get("verifications", [])
-    review_feedback = state.get("review_feedback")
+    selected_items = state.get("selected_items", [])
+    evidence_note = state.get("evidence_note", "")
     revision_count = state.get("revision_count", 0)
-    tracer.node(
-        "write",
-        "start",
-        "Redactando un borrador corto y trazable a partir del estado verificado.",
-        {"verified_stories": len(verifications), "revision_count": revision_count},
-    )
-    if not verifications:
-        draft = build_no_evidence_draft(state["topic"])
+    if not selected_items:
+        article_text = build_no_evidence_article(state["topic"])
     else:
-        response = asyncio.run(
-            llm_client.complete_json(
+        try:
+            response = await llm_client.complete_json(
                 system_prompt=(
-                    "Eres un agente escritor didáctico. Devuelve JSON con headline, "
-                    "summary, bullet_points y closing_note. Resume el flujo con "
-                    "tono claro, menciona cautelas y respeta las instrucciones del revisor."
+                    "Eres un redactor de noticias. Devuelve JSON con article_text. "
+                    "article_text debe ser Markdown limpio con titular, entradilla, cuerpo y fuentes. "
+                    "No menciones LangGraph, agentes, estado interno ni trazas."
                 ),
-                user_prompt=build_write_prompt(
+                user_prompt=build_article_prompt(
                     state["topic"],
-                    story_briefs[: len(verifications)],
-                    verifications,
-                    review_feedback,
+                    selected_items,
+                    evidence_note,
+                    state.get("review_note"),
                     revision_count,
                 ),
-                response_model=DemoDraftPayload,
-                temperature=0.2,
+                response_model=ArticlePayload,
+                temperature=0.1,
             )
-        )
-        draft = response.model_dump(mode="json")
-    next_handoffs = append_handoff(
-        state,
-        tracer,
-        DemoHandoff(
-            from_agent="write",
-            to_agent="review",
-            purpose="Enviar un borrador legible para control de calidad.",
-            inputs_used=["verifications", "review_feedback"],
-            outputs_written=["draft"],
-            summary="Write entrega un borrador que el revisor puede aprobar o devolver.",
-        ),
-    )
-    tracer.node(
+        except Exception as exc:
+            logger.error("write", f"No se pudo redactar una noticia válida: {exc}")
+            raise
+        article_text = response.article_text
+    logger.step(
         "write",
-        "end",
-        "Borrador completado. La siguiente transición depende del revisor.",
-        {"headline": draft["headline"], "bullet_points": len(draft["bullet_points"])},
+        "Se redacta la noticia final en Markdown.",
+        [f"Longitud: {len(article_text)} caracteres"],
     )
-    tracer.edge(
-        "write",
-        "review",
-        "El borrador sale del writer y pasa al control de calidad.",
-    )
-    return {"draft": draft, "handoffs": next_handoffs, "needs_revision": False}
+    return {"article_text": article_text, "needs_revision": False}

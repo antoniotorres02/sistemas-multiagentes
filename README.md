@@ -1,80 +1,43 @@
-# sistemas multiagentes
+# sistemas-multiagentes
 
-Repositorio público y reducido que contiene la demo didáctica de LangGraph en `news_system_demo/`.
+Demo pequeña de un sistema multiagente con LangGraph para producir una noticia a partir de un corpus local.
 
-La pieza principal es la CLI de `news_system_demo/`, pensada para mostrar una organización multiagente observable con:
-
-`load_workspace -> research -> curate -> verify -> write -> review -> (write | render)`
-
-## Qué incluye
-- Código de la demo en `news_system_demo/`
-- Corpus local en `news_system_demo/corpus/news_corpus.json`
-- Una prueba mínima en `tests/test_demo.py`
-- Configuración de empaquetado y ejecución con `pyproject.toml`
-
-## Requisitos
-- Python 3.12
-- `OPENROUTER_KEY` en un archivo `.env` en la raíz del repo
-- `DEMO_OPENROUTER_MODEL` opcional si quieres fijar el modelo de la demo
+La demo prioriza que el flujo sea fácil de enseñar: cada nodo escribe una entrada breve en `run.log` y la salida principal queda en `report.md`.
 
 ## Instalación
-Con `uv`:
 
 ```bash
-uv sync --dev
+uv sync
 ```
 
-Con `pip`:
+Crea un `.env` con tu clave de OpenRouter:
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -e .
+OPENROUTER_KEY=...
+DEMO_OPENROUTER_MODEL=deepseek/deepseek-v4-flash
 ```
 
-## Configuración
-```bash
-cp .env.example .env
-```
-
-Edita `.env` y añade:
+## Uso
 
 ```bash
-OPENROUTER_KEY=tu_clave
-DEMO_OPENROUTER_MODEL=minimax/minimax-m2.7
+uv run sma-demo --topic "ai regulation europe" --thread-id demo-intro
 ```
 
-## Ejecución
-```bash
-uv run sma-demo run --topic "ai regulation europe"
-```
+Cada ejecución crea:
 
-Si prefieres invocarlo como módulo:
-
-```bash
-uv run python -m news_system_demo run --topic "ai regulation europe"
-```
-
-## Inspección
-La demo genera por cada ejecución:
-- `news_system_demo/runs/<thread_id>/events.jsonl`
-- `news_system_demo/runs/<thread_id>/graph.mmd`
 - `news_system_demo/runs/<thread_id>/report.md`
-- `news_system_demo/runs/<thread_id>/state_history.json`
+- `news_system_demo/runs/<thread_id>/run.log`
 
-Y guarda checkpoints en:
-- `news_system_demo/data/checkpoints.sqlite3`
+## Flujo
 
-Comandos útiles:
+El grafo mantiene pasos separados para que la coordinación sea visible sin añadir una capa de tracing pesada:
 
-```bash
-uv run sma-demo show-history --thread-id <thread_id>
-uv run sma-demo show-state --thread-id <thread_id>
-uv run sma-demo show-trace --thread-id <thread_id>
-uv run sma-demo replay --thread-id <thread_id> --checkpoint-index 0
-```
+1. `load_workspace`: inicializa la ejecución.
+2. `research`: selecciona noticias del corpus local.
+3. `curate`: reduce la evidencia a una selección manejable.
+4. `verify`: resume qué permite afirmar la evidencia.
+5. `write`: redacta la noticia en Markdown.
+6. `review`: revisa la noticia y puede pedir una reescritura.
+7. `render`: guarda `report.md`.
 
-## Prueba
-```bash
-uv run pytest
-```
+Si el LLM falla o devuelve JSON inválido, la demo aborta con un error explícito y deja visible el `run.log` generado hasta ese punto.

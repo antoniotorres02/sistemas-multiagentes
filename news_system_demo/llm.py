@@ -1,4 +1,8 @@
-"""Minimal OpenRouter client used by the didactic demo."""
+"""Minimal OpenRouter client used by the didactic demo.
+
+Este módulo encapsula la llamada a OpenRouter y la validación estricta de
+respuestas JSON. Si el modelo falla, la demo aborta de forma explícita.
+"""
 
 from __future__ import annotations
 
@@ -11,12 +15,12 @@ from dotenv import load_dotenv
 from pydantic import BaseModel
 from tenacity import AsyncRetrying, stop_after_attempt, wait_fixed
 
-DEFAULT_CHAT_MODEL = "minimax/minimax-m2.7"
+DEFAULT_CHAT_MODEL = "deepseek/deepseek-v4-flash"
 OPENROUTER_CHAT_URL = "https://openrouter.ai/api/v1/chat/completions"
 ResponseModelT = TypeVar("ResponseModelT", bound=BaseModel)
 
 
-class DemoLlmClientProtocol(Protocol):
+class LlmClientProtocol(Protocol):
     """Subset of LLM behavior used by the demo workflow."""
 
     async def complete_json(
@@ -33,6 +37,8 @@ class DemoLlmClientProtocol(Protocol):
 def extract_text_content(content: Any) -> str:
     """Normalize an OpenRouter content payload into plain text."""
 
+    # OpenRouter puede devolver texto simple o una lista de fragmentos; aquí lo
+    # normalizamos para no cargar esa variación en los nodos.
     if isinstance(content, list):
         return "".join(part.get("text", "") for part in content if isinstance(part, dict)).strip()
     return str(content).strip()
@@ -41,6 +47,8 @@ def extract_text_content(content: Any) -> str:
 def extract_json_object(raw_text: str) -> dict[str, Any]:
     """Extract the first JSON object from a model response."""
 
+    # El modelo suele responder bien, pero esta capa tolera fences y texto
+    # extra para evitar fallos por formato.
     stripped = raw_text.strip()
     if stripped.startswith("```"):
         stripped = stripped.strip("`")
@@ -58,7 +66,7 @@ def extract_json_object(raw_text: str) -> dict[str, Any]:
         return cast(dict[str, Any], json.loads(stripped[start : end + 1]))
 
 
-class DemoOpenRouterClient:
+class OpenRouterClient:
     """Small async client dedicated to the educational demo."""
 
     def __init__(
@@ -71,6 +79,8 @@ class DemoOpenRouterClient:
     ) -> None:
         """Initialize the demo client from environment variables or explicit args."""
 
+        # Si nos pasan un `.env`, lo cargamos para que la demo sea autónoma y
+        # no dependa de variables exportadas globalmente.
         if env_path is not None:
             load_dotenv(env_path)
         self.api_key = api_key or os.getenv("OPENROUTER_KEY")
@@ -87,6 +97,8 @@ class DemoOpenRouterClient:
     async def _post(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Send one chat completion request to OpenRouter."""
 
+        # Reintentamos porque la demo debe tolerar fallos de red puntuales sin
+        # que el flujo completo se rompa por un error transitorio.
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
@@ -115,6 +127,8 @@ class DemoOpenRouterClient:
     ) -> ResponseModelT:
         """Request structured JSON and validate it against a response model."""
 
+        # Pedimos JSON explícito para que los agentes devuelvan estructuras
+        # predecibles y fáciles de encadenar en LangGraph.
         payload = {
             "model": self.model,
             "temperature": temperature,
@@ -124,7 +138,20 @@ class DemoOpenRouterClient:
             ],
             "response_format": {"type": "json_object"},
         }
-        response_payload = await self._post(payload)
-        raw_text = extract_text_content(response_payload["choices"][0]["message"]["content"])
-        parsed = extract_json_object(raw_text)
-        return response_model.model_validate(parsed)
+        try:
+            async for attempt in AsyncRetrying(stop=stop_after_attempt(3), wait=wait_fixed(1), reraise=True):
+                with attempt:
+                    response_payload = await self._post(payload)
+                    raw_text = extract_text_content(response_payload["choices"][0]["message"]["content"])
+                    try:
+                        parsed = extract_json_object(raw_text)
+                        return response_model.model_validate(parsed)
+                    except Exception as exc:  # pragma: no cover - exercised via retry in integration runs
+                        snippet = raw_text.strip().replace("\n", " ")[:300]
+                        raise ValueError(
+                            f"Structured JSON parse failed for model {self.model}: {snippet!r}"
+                        ) from exc
+        except Exception as exc:
+            raise RuntimeError(
+                f"OpenRouter completion failed for model {self.model}: {exc}"
+            ) from exc

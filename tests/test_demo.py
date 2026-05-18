@@ -2,36 +2,22 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from pathlib import Path
 from typing import Any
 
-from langgraph.checkpoint.sqlite import SqliteSaver
 from typer.testing import CliRunner
 
 from news_system_demo.cli import app
-from news_system_demo.models import (
-    DemoDraftPayload,
-    DemoReviewPayload,
-    DemoVerificationPayload,
-    DemoRuntimePaths,
-)
-from news_system_demo.runtime import (
-    DemoTracer,
-    create_run_artifacts,
-    write_graph_mermaid,
-    write_state_history,
-)
+from news_system_demo.llm import OpenRouterClient
+from news_system_demo.models import ArticlePayload, EvidencePayload, ReviewPayload, RuntimePaths
+from news_system_demo.runtime import RunLogger, create_run_artifacts
 from news_system_demo.workflow import build_demo_graph
 
 
-class FakeDemoLlmClient:
-    """Fake LLM used by demo tests."""
-
-    def __init__(self) -> None:
-        """Track reviewer calls so the workflow loops once and then exits."""
-
-        self.review_calls = 0
+class FakeLlmClient:
+    """Fake LLM used by tests to avoid network calls."""
 
     async def complete_json(
         self,
@@ -41,213 +27,217 @@ class FakeDemoLlmClient:
         response_model: type[Any],
         temperature: float = 0.2,
     ) -> Any:
-        """Return deterministic structured outputs for verify and write."""
+        """Return deterministic structured responses."""
 
         del system_prompt, user_prompt, temperature
-        if response_model is DemoVerificationPayload:
-            return DemoVerificationPayload.model_validate(
-                {
-                    "conclusion": "Las fuentes describen la misma historia de forma consistente.",
-                    "claims": [
-                        {
-                            "text": "Las fuentes comparten el mismo eje temático.",
-                            "supporting_points": ["Coinciden en tema y foco regulatorio."],
-                        }
-                    ],
-                    "caution_notes": ["La demo usa un corpus local pequeño."],
-                }
-            )
-        if response_model is DemoReviewPayload:
-            self.review_calls += 1
-            if self.review_calls == 1:
-                return DemoReviewPayload.model_validate(
-                    {
-                        "approved": False,
-                        "feedback_summary": (
-                            "Hace falta una revisión visible para enseñar "
-                            "la realimentación."
-                        ),
-                        "revision_instructions": [
-                            "Haz más explícita la trazabilidad entre verificación y redacción.",
-                            "Menciona que el bucle es deliberado y didáctico.",
-                        ],
-                        "strengths": ["La estructura del borrador ya es clara."],
-                    }
+        if response_model is EvidencePayload:
+            return EvidencePayload(evidence_note="La evidencia apunta a regulación europea con cautelas.")
+        if response_model is ReviewPayload:
+            return ReviewPayload(approved=True, note="La noticia es clara y suficiente.")
+        if response_model is ArticlePayload:
+            return ArticlePayload(
+                article_text="\n".join(
+                    [
+                        "# La regulación europea de IA avanza con cautelas",
+                        "",
+                        "La evidencia local muestra que el debate regulatorio sigue activo.",
+                        "",
+                        "El texto destaca obligaciones, plazos y la necesidad de no exagerar el alcance.",
+                        "",
+                        "## Fuentes",
+                        "- European Policy Daily",
+                    ]
                 )
-            return DemoReviewPayload.model_validate(
-                {
-                    "approved": True,
-                    "feedback_summary": "La segunda versión ya es suficientemente clara.",
-                    "revision_instructions": [],
-                    "strengths": [
-                        "La trazabilidad es explícita.",
-                        "El flujo multiagente se entiende con una sola lectura.",
-                    ],
-                }
             )
-        return DemoDraftPayload.model_validate(
-            {
-                "headline": "Resumen didáctico generado",
-                "summary": (
-                    "El flujo recorre research, curate, verify, write y review "
-                    "para dejar visible la coordinación."
-                ),
-                "bullet_points": [
-                    "El estado compartido acumula datos entre agentes.",
-                    "Los checkpoints y handoffs permiten inspección posterior.",
-                ],
-                "closing_note": (
-                    "La demo prioriza claridad arquitectónica sobre complejidad "
-                    "de dominio."
-                ),
-            }
+        raise AssertionError(f"Unexpected response model: {response_model}")
+
+
+class RejectingReviewLlmClient(FakeLlmClient):
+    """Fake LLM whose reviewer never approves the article."""
+
+    async def complete_json(
+        self,
+        *,
+        system_prompt: str,
+        user_prompt: str,
+        response_model: type[Any],
+        temperature: float = 0.2,
+    ) -> Any:
+        """Reject only review responses."""
+
+        if response_model is ReviewPayload:
+            return ReviewPayload(approved=False, note="Necesita una segunda pasada editorial.")
+        return await super().complete_json(
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
+            response_model=response_model,
+            temperature=temperature,
         )
 
 
-def test_demo_workflow_runs_and_persists_artifacts(tmp_path: Path) -> None:
-    """Run the demo graph end to end with a fake LLM and persist artifacts."""
+class AlwaysFailLlmClient:
+    """Fake LLM that always raises to validate fail-fast behavior."""
+
+    async def complete_json(
+        self,
+        *,
+        system_prompt: str,
+        user_prompt: str,
+        response_model: type[Any],
+        temperature: float = 0.2,
+    ) -> Any:
+        """Raise a deterministic error instead of returning structured output."""
+
+        del system_prompt, user_prompt, response_model, temperature
+        raise RuntimeError("forced llm failure")
+
+
+def _build_demo_root(tmp_path: Path) -> tuple[Path, Path, Path]:
+    """Create a minimal demo filesystem tree for isolated tests."""
 
     root_dir = tmp_path / "news_system_demo"
     corpus_dir = root_dir / "corpus"
-    data_dir = root_dir / "data"
     runs_dir = root_dir / "runs"
     corpus_dir.mkdir(parents=True)
-    data_dir.mkdir()
-    runs_dir.mkdir()
-    source_corpus = Path(__file__).resolve().parents[1] / "news_system_demo" / "corpus" / "news_corpus.json"
+    runs_dir.mkdir(parents=True)
     corpus_path = corpus_dir / "news_corpus.json"
-    corpus_path.write_text(source_corpus.read_text(encoding="utf-8"), encoding="utf-8")
-
-    runtime_paths = DemoRuntimePaths(
-        root_dir=root_dir,
-        corpus_path=corpus_path,
-        data_dir=data_dir,
-        runs_dir=runs_dir,
-        checkpoint_db_path=data_dir / "checkpoints.sqlite3",
-        env_path=tmp_path / ".env",
-    )
-    artifacts = create_run_artifacts(runtime_paths, "demo-thread")
-    write_graph_mermaid(artifacts)
-    tracer = DemoTracer(artifacts)
-
-    with SqliteSaver.from_conn_string(str(data_dir / "checkpoints.sqlite3")) as saver:
-        graph = build_demo_graph(
-            corpus_path=corpus_path,
-            artifacts=artifacts,
-            tracer=tracer,
-            llm_client=FakeDemoLlmClient(),
-            checkpointer=saver,
-        )
-        config = {"configurable": {"thread_id": "demo-thread"}}
-        final_state = graph.invoke(
-            {"topic": "ai regulation europe", "thread_id": "demo-thread"},
-            config=config,
-        )
-        snapshots = list(graph.get_state_history(config))
-        write_state_history(artifacts, snapshots)
-
-    assert "final_report" in final_state
-    assert len(final_state["story_briefs"]) >= 1
-    assert len(final_state["verifications"]) >= 1
-    assert final_state["revision_count"] == 1
-    assert len(final_state["handoffs"]) >= 6
-    assert Path(artifacts.report_md).exists()
-    assert Path(artifacts.events_jsonl).exists()
-    assert Path(artifacts.state_history_json).exists()
-    assert "Resumen didáctico generado" in Path(artifacts.report_md).read_text(encoding="utf-8")
-    assert "### Handoffs" in Path(artifacts.report_md).read_text(encoding="utf-8")
-
-
-def test_demo_replay_cli_reads_persisted_state_history(tmp_path: Path, monkeypatch: Any) -> None:
-    """Replay a persisted demo history through the CLI."""
-
-    runner = CliRunner()
-    demo_root = tmp_path / "news_system_demo"
-    (demo_root / "runs" / "demo-thread").mkdir(parents=True)
-    history_path = demo_root / "runs" / "demo-thread" / "state_history.json"
-    history_path.write_text(
+    corpus_path.write_text(
         json.dumps(
             [
                 {
-                    "created_at": "2026-03-25T20:00:00+00:00",
-                    "metadata": {"step": 0},
-                    "values": {"topic": "ai regulation europe"},
+                    "item_id": "a",
+                    "title": "EU AI Act timeline advances",
+                    "summary": "EU institutions prepare phased AI obligations.",
+                    "body": "The AI Act introduces obligations with phased implementation dates.",
+                    "source_name": "European Policy Daily",
+                    "url": "https://example.com/eu-ai-act",
+                    "published_at": "2026-03-01T12:00:00Z",
+                    "tags": ["ai", "regulation", "europe"],
+                    "semantic_topic": "ai regulation",
                 },
                 {
-                    "created_at": "2026-03-25T20:00:01+00:00",
-                    "metadata": {"step": 1},
-                    "values": {
-                        "topic": "ai regulation europe",
-                        "story_briefs": [{"story_id": "ai-reg"}],
-                    },
+                    "item_id": "b",
+                    "title": "Hospitals test AI triage",
+                    "summary": "Clinics run controlled pilots.",
+                    "body": "Health systems evaluate AI triage with medical supervision.",
+                    "source_name": "Health Systems Review",
+                    "url": "https://example.com/ai-health",
+                    "published_at": "2026-03-02T12:00:00Z",
+                    "tags": ["ai", "health"],
+                    "semantic_topic": "ai in health",
                 },
-            ],
-            ensure_ascii=False,
-        ),
-        encoding="utf-8",
-    )
-    monkeypatch.setattr("news_system_demo.cli.ROOT_DIR", demo_root)
-
-    result = runner.invoke(app, ["replay", "--thread-id", "demo-thread", "--checkpoint-index", "1"])
-
-    assert result.exit_code == 0
-    assert "demo-thread" in result.stdout
-    assert "\"story_briefs\"" in result.stdout
-
-
-def test_demo_show_trace_cli_reads_persisted_trace(tmp_path: Path, monkeypatch: Any) -> None:
-    """Show the persisted trace with edge and handoff events."""
-
-    runner = CliRunner()
-    demo_root = tmp_path / "news_system_demo"
-    (demo_root / "runs" / "demo-thread").mkdir(parents=True)
-    events_path = demo_root / "runs" / "demo-thread" / "events.jsonl"
-    events_path.write_text(
-        "\n".join(
-            [
-                json.dumps(
-                    {
-                        "ts": "2026-03-25T20:00:00+00:00",
-                        "event_kind": "node",
-                        "agent": "research",
-                        "phase": "start",
-                        "message": "Inicio research",
-                        "payload": {"topic": "ai regulation europe"},
-                    },
-                    ensure_ascii=False,
-                ),
-                json.dumps(
-                    {
-                        "ts": "2026-03-25T20:00:01+00:00",
-                        "event_kind": "edge",
-                        "agent": "review",
-                        "phase": "transition",
-                        "message": "Arista condicional tomada",
-                        "payload": {"source": "review", "target": "write"},
-                    },
-                    ensure_ascii=False,
-                ),
-                json.dumps(
-                    {
-                        "ts": "2026-03-25T20:00:02+00:00",
-                        "event_kind": "handoff",
-                        "agent": "review",
-                        "phase": "handoff",
-                        "message": "Review devuelve feedback",
-                        "payload": {"from_agent": "review", "to_agent": "write"},
-                    },
-                    ensure_ascii=False,
-                ),
             ]
         ),
         encoding="utf-8",
     )
-    monkeypatch.setattr("news_system_demo.cli.ROOT_DIR", demo_root)
+    return root_dir, corpus_path, runs_dir
 
-    result = runner.invoke(app, ["show-trace", "--thread-id", "demo-thread"])
 
-    assert result.exit_code == 0
-    assert "[edge]" in result.stdout
-    assert "review/transition" in result.stdout
-    assert "\"target\": \"write\"" in result.stdout
-    assert "Review devuelve feedback" in result.stdout
+def test_workflow_writes_clean_report_and_plain_log(tmp_path: Path) -> None:
+    """Run the graph end to end and persist only report.md plus run.log."""
+
+    root_dir, corpus_path, runs_dir = _build_demo_root(tmp_path)
+    runtime_paths = RuntimePaths(
+        root_dir=root_dir,
+        corpus_path=corpus_path,
+        runs_dir=runs_dir,
+        env_path=tmp_path / ".env",
+    )
+    artifacts = create_run_artifacts(runtime_paths, "demo-thread")
+    logger = RunLogger(artifacts, topic="ai regulation europe")
+    graph = build_demo_graph(
+        corpus_path=corpus_path,
+        artifacts=artifacts,
+        logger=logger,
+        llm_client=FakeLlmClient(),
+    )
+
+    final_state = asyncio.run(
+        graph.ainvoke({"topic": "ai regulation europe", "thread_id": "demo-thread"})
+    )
+
+    report_text = Path(artifacts.report_md).read_text(encoding="utf-8")
+    log_text = Path(artifacts.run_log).read_text(encoding="utf-8")
+    assert final_state["report_path"] == artifacts.report_md
+    assert "# La regulación europea de IA avanza con cautelas" in report_text
+    assert "Handoffs" not in report_text
+    assert "Revision" not in report_text
+    assert "estado interno" not in report_text
+    assert "## 1. load_workspace" in log_text
+    assert "## 2. research" in log_text
+    assert "## 6. review" in log_text
+    assert "## 7. render" in log_text
+    assert not Path(artifacts.run_dir, "events.jsonl").exists()
+    assert not Path(artifacts.run_dir, "state_history.json").exists()
+
+
+def test_review_limit_does_not_fake_approval(tmp_path: Path) -> None:
+    """Finish by revision limit without pretending the reviewer approved."""
+
+    root_dir, corpus_path, runs_dir = _build_demo_root(tmp_path)
+    runtime_paths = RuntimePaths(
+        root_dir=root_dir,
+        corpus_path=corpus_path,
+        runs_dir=runs_dir,
+        env_path=tmp_path / ".env",
+    )
+    artifacts = create_run_artifacts(runtime_paths, "demo-thread")
+    logger = RunLogger(artifacts, topic="ai regulation europe")
+    graph = build_demo_graph(
+        corpus_path=corpus_path,
+        artifacts=artifacts,
+        logger=logger,
+        llm_client=RejectingReviewLlmClient(),
+    )
+
+    final_state = asyncio.run(
+        graph.ainvoke({"topic": "ai regulation europe", "thread_id": "demo-thread"})
+    )
+
+    assert final_state["revision_count"] == 1
+    assert final_state["needs_revision"] is False
+    assert final_state["review_note"] == "Necesita una segunda pasada editorial."
+    assert "límite de revisiones" in Path(artifacts.run_log).read_text(encoding="utf-8")
+
+
+def test_openrouter_client_fails_fast_on_invalid_json() -> None:
+    """Raise an explicit error instead of returning a synthetic fallback payload."""
+
+    client = OpenRouterClient(api_key="test-key", model="test-model")
+
+    async def _fake_post(payload: dict[str, Any]) -> dict[str, Any]:
+        del payload
+        return {"choices": [{"message": {"content": "esto no es json"}}]}
+
+    client._post = _fake_post  # type: ignore[method-assign]
+
+    async def _run() -> None:
+        await client.complete_json(
+            system_prompt="system",
+            user_prompt="user",
+            response_model=EvidencePayload,
+        )
+
+    try:
+        asyncio.run(_run())
+    except RuntimeError as exc:
+        assert "OpenRouter completion failed" in str(exc)
+        assert "Structured JSON parse failed" in str(exc)
+    else:  # pragma: no cover - defensive assertion
+        raise AssertionError("OpenRouterClient should fail fast on invalid JSON.")
+
+
+def test_run_cli_fails_fast_when_llm_fails(tmp_path: Path, monkeypatch: Any) -> None:
+    """Abort the run command and surface the failing LLM instead of faking output."""
+
+    root_dir, _, _ = _build_demo_root(tmp_path)
+    monkeypatch.setattr("news_system_demo.cli.ROOT_DIR", root_dir)
+    monkeypatch.setattr("news_system_demo.cli.build_default_llm_client", lambda env_path: AlwaysFailLlmClient())
+    runner = CliRunner()
+
+    result = runner.invoke(app, ["--topic", "ai regulation europe", "--thread-id", "demo-thread"])
+
+    assert result.exit_code == 1
+    assert "news_system_demo FALLIDA" in result.stderr
+    assert "forced llm failure" in result.stderr
+    assert "run_log:" in result.stderr
